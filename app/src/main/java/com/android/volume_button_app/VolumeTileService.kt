@@ -2,6 +2,7 @@ package com.android.volume_button_app
 
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.drawable.Icon
 import android.media.AudioManager
 import android.service.quicksettings.Tile
@@ -9,6 +10,7 @@ import android.service.quicksettings.TileService
 import android.util.Log
 
 class VolumeTileService : TileService() {
+	private var isReceiverRegistered = false
 	override fun onStartCommand(intent : Intent? , flags : Int , startId : Int) : Int {
 		Log.i("test" , "receive command")
 		updateQuickSettingsTile()
@@ -20,6 +22,12 @@ class VolumeTileService : TileService() {
 		super.onClick()
 		val audioManager : AudioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 		audioManager.adjustVolume(AudioManager.ADJUST_SAME , AudioManager.FLAG_SHOW_UI)
+		val receiver = VolumeMonitor()
+		val filter = IntentFilter()
+		filter.addAction("android.media.VOLUME_CHANGED_ACTION")
+		if (! isReceiverRegistered) {
+			registerReceiver(receiver , filter)
+		}
 	}
 
 	private val muteIcon : Icon = Icon.createWithResource("com.example.myapplication" , R.drawable.mute)
