@@ -1,5 +1,6 @@
 package com.android.volume_button_app
 
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
@@ -7,14 +8,18 @@ import android.graphics.drawable.Icon
 import android.media.AudioManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import android.util.Log
 
 class VolumeTileService : TileService() {
-	private var isReceiverRegistered = false
-	override fun onStartCommand(intent : Intent? , flags : Int , startId : Int) : Int {
-		Log.i("test" , "receive command")
-		updateQuickSettingsTile()
-		return super.onStartCommand(intent , flags , startId)
+	private val receiver : BroadcastReceiver = object : BroadcastReceiver() {
+		override fun onReceive(context : Context? , intent : Intent) {
+			if (intent.action.equals("android.media.VOLUME_CHANGED_ACTION")) {
+				val newVolume = intent.getIntExtra("android.media.EXTRA_VOLUME_STREAM_VALUE" , 0)
+				val oldVolume = intent.getIntExtra("android.media.EXTRA_PREV_VOLUME_STREAM_VALUE" , 0)
+				if (newVolume != oldVolume) {
+					updateQuickSettingsTile()
+				}
+			}
+		}
 	}
 
 	// Replace as Volume Button
@@ -22,12 +27,9 @@ class VolumeTileService : TileService() {
 		super.onClick()
 		val audioManager : AudioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
 		audioManager.adjustVolume(AudioManager.ADJUST_SAME , AudioManager.FLAG_SHOW_UI)
-		val receiver = VolumeMonitor()
 		val filter = IntentFilter()
 		filter.addAction("android.media.VOLUME_CHANGED_ACTION")
-		if (! isReceiverRegistered) {
-			registerReceiver(receiver , filter)
-		}
+		registerReceiver(receiver , filter)
 	}
 
 	private val muteIcon : Icon = Icon.createWithResource("com.example.myapplication" , R.drawable.mute)
