@@ -4,7 +4,6 @@ import android.app.StatusBarManager
 import android.content.ComponentName
 import android.content.Context
 import android.graphics.drawable.Icon
-import android.media.AudioManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,23 +33,15 @@ class MainActivity : ComponentActivity() {
 		super.onCreate(savedInstanceState)
 		setContent {
 			Volume_button_appTheme {
-				val audioManager : AudioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
-				fun addToQuickSettings() {
-					val statusBarManager : StatusBarManager = getSystemService(Context.STATUS_BAR_SERVICE) as StatusBarManager
-					val componentName = ComponentName(this , VolumeTileService::class.java)
-					val icon = Icon.createWithResource(this , R.drawable.ic_launcher_background)
-					statusBarManager.requestAddTileService(componentName , "Volume_Btn" , icon , {} , {})
-				}
-
 				val displayInfo = this.resources.displayMetrics.heightPixels / 16.0
-				AppCompose(displayInfo)
+				AppCompose(displayInfo , this)
 			}
 		}
 	}
 }
 
 @Composable
-fun AppCompose(deviceHeight : Double) {
+fun AppCompose(deviceHeight : Double , context : Context) {
 	val padding = 4.dp
 	val modifier = Modifier
 		.padding(padding)
@@ -60,6 +51,13 @@ fun AppCompose(deviceHeight : Double) {
 	val textModifier = Modifier
 		.padding(8.dp)
 		.fillMaxWidth()
+
+	fun addToQuickSettings(context : Context) {
+		val statusBarManager : StatusBarManager = context.getSystemService(Context.STATUS_BAR_SERVICE) as StatusBarManager
+		val componentName = ComponentName(context , VolumeTileService::class.java)
+		val icon = Icon.createWithResource(context , R.drawable.unmute)
+		statusBarManager.requestAddTileService(componentName , "Volume_Btn" , icon , {} , {})
+	}
 	Column(modifier = Modifier.padding(vertical = 4.dp)) {
 		Card(modifier) {
 			Text(text = "Volume Percentage" , modifier = textModifier , textAlign = TextAlign.Center)
@@ -75,7 +73,7 @@ fun AppCompose(deviceHeight : Double) {
 		Card(modifier) {
 			Text(text = "Add to Quick settings" , modifier = textModifier , textAlign = TextAlign.Center)
 			Box(contentAlignment = Alignment.Center) {
-				FloatingActionButton(onClick = {}) {
+				FloatingActionButton(onClick = { addToQuickSettings(context) }) {
 					Icon(
 						Icons.Rounded.Add ,
 						contentDescription = null
