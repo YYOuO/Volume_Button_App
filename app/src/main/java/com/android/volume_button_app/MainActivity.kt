@@ -20,11 +20,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Slider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,12 +34,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.preferencesDataStore
 import com.android.volume_button_app.ui.theme.Volume_button_appTheme
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
-
-// At the top level of your kotlin file:
 val Context.dataStore : DataStore<Preferences> by preferencesDataStore(name = "Volume_Values")
+val isFixed = booleanPreferencesKey("isFixed")
 
 class MainActivity : ComponentActivity() {
 	override fun onCreate(savedInstanceState : Bundle?) {
@@ -62,6 +69,18 @@ fun AppCompose(deviceHeight : Double , context : Context) {
 	val textModifier = Modifier
 		.padding(8.dp)
 		.fillMaxWidth()
+
+	suspend fun switchFixed() : Boolean {
+		val isFixedFlow : Flow<Boolean> = context.dataStore.data
+			.map { preferences ->
+				preferences[isFixed] ?: false
+			}
+		context.dataStore.edit { settings ->
+			settings[isFixed] = ! isFixedFlow.first()
+		}
+		return isFixedFlow.first()
+	}
+
 	val audioManager : AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
 	val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
 	Column(modifier = Modifier.padding(vertical = 4.dp)) {
@@ -73,6 +92,13 @@ fun AppCompose(deviceHeight : Double , context : Context) {
 				audioManager.setStreamVolume(AudioManager.STREAM_MUSIC , set.toInt() , 0)
 			})
 			Text(text = "${sliderPosition.toInt()}%" , modifier = textModifier , textAlign = TextAlign.Center)
+		}
+		// should click once to update status . Needs improve
+		val coroutineScope = rememberCoroutineScope()
+		var booleanFixed by remember { mutableStateOf(false) }
+		Card(modifier) {
+			Text(text = "Fixed" , modifier = textModifier , textAlign = TextAlign.Center)
+			Switch(checked = booleanFixed , onCheckedChange = { coroutineScope.launch { booleanFixed = switchFixed() } })
 		}
 		Card(modifier) {
 			Text(text = "Turn off all sounds" , modifier = textModifier , textAlign = TextAlign.Center)
@@ -95,8 +121,6 @@ fun AppCompose(deviceHeight : Double , context : Context) {
 		}
 
 	}
-
-
 }
 
 

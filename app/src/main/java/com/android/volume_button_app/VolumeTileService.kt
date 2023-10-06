@@ -9,6 +9,12 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
+import android.widget.Toast
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 class VolumeTileService : TileService() {
 	private val receiver : BroadcastReceiver = object : BroadcastReceiver() {
@@ -18,18 +24,38 @@ class VolumeTileService : TileService() {
 			}
 		}
 	}
-
 	// Original plan was to use communicationDeviceChangeListener but failed
 	override fun onStartListening() {
 		super.onStartListening()
-		updateQuickSettingsTile()
+		val context = this
+		val coroutineScope = CoroutineScope(Dispatchers.Main)
+		coroutineScope.launch {
+			val result = getValue()
+			if (result == true) {
+				qsTile.state = Tile.STATE_UNAVAILABLE
+				qsTile.subtitle = "is Fixed"
+				qsTile.updateTile()
+				Toast.makeText(context , "Volume is fixed now" , Toast.LENGTH_SHORT).show()
+			}
+			else {
+				updateQuickSettingsTile()
+			}
+		}
+	}
+
+	suspend fun getValue() : Boolean? {
+		return this.dataStore.data.map { preferences -> preferences[isFixed] }.first()
+	}
+
+	override fun onCreate() {
+		super.onCreate()
 		val filter = IntentFilter()
 		filter.addAction("android.media.VOLUME_CHANGED_ACTION")
 		registerReceiver(receiver , filter)
 	}
 
-	override fun onStopListening() {
-		super.onStopListening()
+	override fun onDestroy() {
+		super.onDestroy()
 		unregisterReceiver(receiver)
 	}
 
