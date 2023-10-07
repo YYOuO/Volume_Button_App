@@ -36,6 +36,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.android.volume_button_app.ui.theme.Volume_button_appTheme
 import kotlinx.coroutines.flow.Flow
@@ -45,6 +46,7 @@ import kotlinx.coroutines.launch
 
 val Context.dataStore : DataStore<Preferences> by preferencesDataStore(name = "Volume_Values")
 val isFixed = booleanPreferencesKey("isFixed")
+val streamMusic = intPreferencesKey("streamMusic")
 
 class MainActivity : ComponentActivity() {
 	override fun onCreate(savedInstanceState : Bundle?) {
@@ -70,13 +72,25 @@ fun AppCompose(deviceHeight : Double , context : Context) {
 		.padding(8.dp)
 		.fillMaxWidth()
 
-	suspend fun switchFixed() : Boolean {
+	suspend fun switchFixed(context : Context) : Boolean {
 		val isFixedFlow : Flow<Boolean> = context.dataStore.data
 			.map { preferences ->
 				preferences[isFixed] ?: false
 			}
 		context.dataStore.edit { settings ->
 			settings[isFixed] = ! isFixedFlow.first()
+		}
+		val audioManager : AudioManager = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
+		if (isFixedFlow.first()) {
+			context.dataStore.edit { settings -> settings[streamMusic] = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) }
+			audioManager.setStreamVolume(AudioManager.STREAM_MUSIC , 0 , 0)
+		}
+		else {
+			val streamMusicFlow : Flow<Int> = context.dataStore.data
+				.map { preferences ->
+					preferences[streamMusic] ?: 0
+				}
+			audioManager.setStreamVolume(AudioManager.STREAM_MUSIC , streamMusicFlow.first() , 0)
 		}
 		return isFixedFlow.first()
 	}
@@ -98,19 +112,19 @@ fun AppCompose(deviceHeight : Double , context : Context) {
 		var booleanFixed by remember { mutableStateOf(false) }
 		Card(modifier) {
 			Text(text = "Fixed" , modifier = textModifier , textAlign = TextAlign.Center)
-			Switch(checked = booleanFixed , onCheckedChange = { coroutineScope.launch { booleanFixed = switchFixed() } })
+			Switch(checked = booleanFixed , onCheckedChange = { coroutineScope.launch { booleanFixed = switchFixed(context) } })
 		}
-		Card(modifier) {
-			Text(text = "Turn off all sounds" , modifier = textModifier , textAlign = TextAlign.Center)
+//		Card(modifier) {
+//			Text(text = "Turn off all sounds" , modifier = textModifier , textAlign = TextAlign.Center)
 //			Switch(checked = false , onCheckedChange = { modifyAllSounds(context , it) })
-		}
+//		}
 		Card(modifier) {
 			Text(text = "Add to Quick settings" , modifier = textModifier , textAlign = TextAlign.Center)
 			Box(contentAlignment = Alignment.Center) {
 				FloatingActionButton(onClick = {
 					val statusBarManager : StatusBarManager = context.getSystemService(Context.STATUS_BAR_SERVICE) as StatusBarManager
 					val componentName = ComponentName(context , VolumeTileService::class.java)
-					val icon = Icon.createWithResource(context , R.drawable.unmute)
+					val icon = Icon.createWithResource(context , R.drawable.thirty_third)
 					statusBarManager.requestAddTileService(componentName , "Volume_Btn" , icon , {} , {})
 				}) {
 					Icon(
