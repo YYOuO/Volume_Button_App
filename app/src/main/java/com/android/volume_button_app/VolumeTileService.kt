@@ -9,7 +9,6 @@ import android.media.AudioDeviceInfo
 import android.media.AudioManager
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import android.widget.Toast
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -24,18 +23,24 @@ class VolumeTileService : TileService() {
 			}
 		}
 	}
+	private val muteIcon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.mute)
+	private val bluetoothIcon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.bluetooth)
+	private val oneThirdIcon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.thirty_third)
+	private val twoThirdsIcon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.sixty_six)
+	private val hundredIcon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.hundred)
+	private val isFixedIcon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.fixed)
+
 	// Original plan was to use communicationDeviceChangeListener but failed
 	override fun onStartListening() {
 		super.onStartListening()
-		val context = this
 		val coroutineScope = CoroutineScope(Dispatchers.Main)
 		coroutineScope.launch {
 			val result = getValue()
 			if (result == true) {
 				qsTile.state = Tile.STATE_UNAVAILABLE
 				qsTile.subtitle = "is Fixed"
+				qsTile.icon = isFixedIcon
 				qsTile.updateTile()
-				Toast.makeText(context , "Volume is fixed now" , Toast.LENGTH_SHORT).show()
 			}
 			else {
 				updateQuickSettingsTile()
@@ -68,20 +73,26 @@ class VolumeTileService : TileService() {
 
 	private fun updateQuickSettingsTile() {
 		val audioManager : AudioManager = getSystemService(Context.AUDIO_SERVICE) as AudioManager
+		val volumePercentage = ((audioManager.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat() / audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC).toFloat()) * 100).toInt()
 		if (audioManager.getStreamVolume(AudioManager.STREAM_MUSIC) == 0) {
-			qsTile.icon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.mute)
+			qsTile.icon = muteIcon
 			qsTile.state = Tile.STATE_INACTIVE
 		}
 		else {
-			qsTile.icon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.unmute)
 			qsTile.state = Tile.STATE_ACTIVE
+			if (volumePercentage > 66) {
+				qsTile.icon = hundredIcon
+			}
+			else if (volumePercentage > 33) {
+				qsTile.icon = twoThirdsIcon
+			}
+			else {
+				qsTile.icon = oneThirdIcon
+			}
 		}
 		if (audioManager.communicationDevice?.type != AudioDeviceInfo.TYPE_BUILTIN_EARPIECE) {
-			qsTile.icon = Icon.createWithResource("com.android.volume_button_app" , R.drawable.ic_launcher_foreground)
+			qsTile.icon = bluetoothIcon
 		}
-		val currentVolume = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
-		val maxVolume = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-		val volumePercentage = ((currentVolume.toFloat() / maxVolume.toFloat()) * 100).toInt()
 		qsTile.subtitle = "$volumePercentage%"
 		qsTile.updateTile()
 	}
